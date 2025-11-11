@@ -1,6 +1,7 @@
 // Configuration file for the Performance Feedback Manager
 // IMPORTANT: This file no longer stores API credentials for security reasons
 // Credentials are now stored securely in your browser's local storage
+// Last updated: 2025-11-11
 
 window.CONFIG = {
     // Default API Endpoint (can be overridden in settings)
