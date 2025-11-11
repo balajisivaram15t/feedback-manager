@@ -4,10 +4,10 @@
 
 window.CONFIG = {
     // Default API Endpoint (can be overridden in settings)
-    DEFAULT_ENDPOINT: 'https://api.openai.com/v1/chat/completions',
+    DEFAULT_ENDPOINT: 'https://testaimodel-sbal.cognitiveservices.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2025-01-01-preview',
     
     // Default Model (can be overridden in settings)
-    DEFAULT_MODEL: 'gpt-3.5-turbo',
+    DEFAULT_MODEL: 'gpt-4o-mini',
     
     // Application Settings
     APP_NAME: 'Performance Feedback Manager',
