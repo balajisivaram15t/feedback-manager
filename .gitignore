@@ -1,0 +1,13 @@
+# Keep config.js out of version control to protect API keys
+config.local.js
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+
+# Logs
+*.log
