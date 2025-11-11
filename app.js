@@ -5,8 +5,11 @@ class FeedbackManager {
         this.userInput = document.getElementById('userInput');
         this.sendButton = document.getElementById('sendButton');
         this.statusText = document.getElementById('statusText');
+        this.settingsButton = document.getElementById('settingsButton');
+        this.settingsModal = document.getElementById('settingsModal');
         
         this.initializeEventListeners();
+        this.initializeSettingsModal();
         this.checkConfiguration();
     }
 
@@ -26,17 +29,120 @@ class FeedbackManager {
             this.userInput.style.height = 'auto';
             this.userInput.style.height = this.userInput.scrollHeight + 'px';
         });
+
+        // Settings button
+        this.settingsButton.addEventListener('click', () => this.openSettings());
+    }
+
+    initializeSettingsModal() {
+        const closeModal = document.getElementById('closeModal');
+        const credentialsForm = document.getElementById('credentialsForm');
+        const toggleApiKey = document.getElementById('toggleApiKey');
+        const clearCredentials = document.getElementById('clearCredentials');
+        
+        // Close modal
+        closeModal.addEventListener('click', () => this.closeSettings());
+        
+        // Close on outside click
+        this.settingsModal.addEventListener('click', (e) => {
+            if (e.target === this.settingsModal) {
+                this.closeSettings();
+            }
+        });
+        
+        // Toggle API key visibility
+        toggleApiKey.addEventListener('click', () => {
+            const apiKeyInput = document.getElementById('apiKey');
+            apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+            toggleApiKey.textContent = apiKeyInput.type === 'password' ? '👁️' : '🙈';
+        });
+        
+        // Clear credentials
+        clearCredentials.addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all stored credentials?')) {
+                window.credentialManager.clearCredentials();
+                this.closeSettings();
+                this.checkConfiguration();
+            }
+        });
+        
+        // Form submission
+        credentialsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveCredentials();
+        });
+    }
+
+    openSettings() {
+        // Load existing credentials if any
+        const credentials = window.credentialManager.getCredentials();
+        if (credentials) {
+            document.getElementById('apiKey').value = credentials.apiKey;
+            document.getElementById('modelName').value = credentials.modelName;
+            document.getElementById('apiEndpoint').value = credentials.apiEndpoint;
+        } else {
+            // Set defaults
+            document.getElementById('apiEndpoint').value = window.CONFIG.DEFAULT_ENDPOINT;
+            document.getElementById('modelName').value = window.CONFIG.DEFAULT_MODEL;
+        }
+        
+        this.settingsModal.classList.add('show');
+        document.getElementById('errorMessage').classList.remove('show');
+    }
+
+    closeSettings() {
+        this.settingsModal.classList.remove('show');
+    }
+
+    saveCredentials() {
+        const credentials = {
+            apiKey: document.getElementById('apiKey').value.trim(),
+            modelName: document.getElementById('modelName').value.trim(),
+            apiEndpoint: document.getElementById('apiEndpoint').value.trim()
+        };
+        
+        // Validate
+        const validation = window.credentialManager.validateCredentials(credentials);
+        if (!validation.valid) {
+            const errorMsg = document.getElementById('errorMessage');
+            errorMsg.textContent = validation.errors.join('. ');
+            errorMsg.classList.add('show');
+            return;
+        }
+        
+        // Save
+        const saved = window.credentialManager.saveCredentials(credentials);
+        if (saved) {
+            this.closeSettings();
+            this.checkConfiguration();
+            this.updateStatus('✅ Credentials saved successfully', 'success');
+        } else {
+            const errorMsg = document.getElementById('errorMessage');
+            errorMsg.textContent = 'Failed to save credentials. Please try again.';
+            errorMsg.classList.add('show');
+        }
     }
 
     checkConfiguration() {
-        if (!window.CONFIG || !window.CONFIG.API_KEY) {
-            this.updateStatus('⚠️ Please configure your API key in config.js', 'error');
+        const hasCredentials = window.credentialManager.hasCredentials();
+        
+        if (!hasCredentials) {
+            this.updateStatus('⚙️ Please configure your API credentials', 'error');
             this.sendButton.disabled = true;
-        } else if (!window.CONFIG.MODEL_NAME) {
-            this.updateStatus('⚠️ Please configure your model name in config.js', 'error');
-            this.sendButton.disabled = true;
+            this.userInput.disabled = true;
+            // Auto-open settings on first load
+            setTimeout(() => this.openSettings(), 500);
         } else {
-            this.updateStatus('✅ Ready to provide feedback', 'success');
+            const credentials = window.credentialManager.getCredentials();
+            if (credentials) {
+                this.updateStatus('✅ Ready to provide feedback', 'success');
+                this.sendButton.disabled = false;
+                this.userInput.disabled = false;
+            } else {
+                this.updateStatus('⚠️ Invalid credentials stored. Please reconfigure.', 'error');
+                this.sendButton.disabled = true;
+                this.userInput.disabled = true;
+            }
         }
     }
 
@@ -94,24 +200,27 @@ Keep your feedback concise (2-3 paragraphs), balanced, and focused on growth. Be
 
         const userPrompt = `Here are the performance notes from an employee:\n\n"${performanceNotes}"\n\nPlease provide constructive managerial feedback.`;
 
-        // Determine API endpoint based on configuration
-        const apiEndpoint = window.CONFIG.API_ENDPOINT || this.getDefaultEndpoint();
+        // Get credentials from secure storage
+        const credentials = window.credentialManager.getCredentials();
+        if (!credentials) {
+            throw new Error('No credentials found. Please configure your API settings.');
+        }
         
         const requestBody = {
-            model: window.CONFIG.MODEL_NAME,
+            model: credentials.modelName,
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt }
             ],
-            temperature: 0.7,
-            max_tokens: 500
+            temperature: window.CONFIG.TEMPERATURE || 0.7,
+            max_tokens: window.CONFIG.MAX_TOKENS || 500
         };
 
-        const response = await fetch(apiEndpoint, {
+        const response = await fetch(credentials.apiEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${window.CONFIG.API_KEY}`
+                'Authorization': `Bearer ${credentials.apiKey}`
             },
             body: JSON.stringify(requestBody)
         });
@@ -123,12 +232,6 @@ Keep your feedback concise (2-3 paragraphs), balanced, and focused on growth. Be
 
         const data = await response.json();
         return data.choices[0].message.content;
-    }
-
-    getDefaultEndpoint() {
-        // Default to OpenAI-compatible endpoint
-        // Users can override this in config.js
-        return 'https://api.openai.com/v1/chat/completions';
     }
 
     addMessage(content, role) {

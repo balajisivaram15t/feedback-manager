@@ -11,6 +11,9 @@
         <header class="app-header">
             <h1>🎯 Performance Feedback Manager</h1>
             <p class="subtitle">Get AI-powered managerial feedback on your performance notes</p>
+            <button id="settingsButton" class="settings-button" title="Settings">
+                ⚙️
+            </button>
         </header>
 
         <div class="chat-container">
@@ -53,7 +56,79 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔐 API Configuration</h2>
+                <button class="close-button" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-description">
+                    Your API credentials are stored securely in your browser and never sent to our servers.
+                </p>
+                
+                <form id="credentialsForm">
+                    <div class="form-group">
+                        <label for="apiKey">API Key <span class="required">*</span></label>
+                        <input 
+                            type="password" 
+                            id="apiKey" 
+                            class="form-input" 
+                            placeholder="Enter your API key"
+                            required
+                        >
+                        <button type="button" class="toggle-visibility" id="toggleApiKey">👁️</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="modelName">Model Name <span class="required">*</span></label>
+                        <input 
+                            type="text" 
+                            id="modelName" 
+                            class="form-input" 
+                            placeholder="e.g., gpt-4, gpt-3.5-turbo, gpt-4o-mini"
+                            required
+                        >
+                        <small class="form-hint">OpenAI: gpt-4, gpt-3.5-turbo | Azure: your-deployment-name</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="apiEndpoint">API Endpoint <span class="required">*</span></label>
+                        <input 
+                            type="url" 
+                            id="apiEndpoint" 
+                            class="form-input" 
+                            placeholder="https://api.openai.com/v1/chat/completions"
+                            required
+                        >
+                        <small class="form-hint">OpenAI default or your Azure OpenAI endpoint</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="rememberMe" checked>
+                            <span>Keep me signed in (store credentials in browser)</span>
+                        </label>
+                    </div>
+
+                    <div class="error-message" id="errorMessage"></div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="clearCredentials">
+                            Clear Credentials
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            Save & Continue
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="config.js"></script>
+    <script src="credentials.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
