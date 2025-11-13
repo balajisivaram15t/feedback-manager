@@ -154,49 +154,169 @@ class FeedbackManager {
             return;
         }
 
-        // Disable input while processing
-        this.setInputState(false);
-        
-        // Display user message
-        this.addMessage(message, 'user');
-        
-        // Clear input
-        this.userInput.value = '';
-        this.userInput.style.height = 'auto';
-        
-        // Show loading indicator
-        const loadingId = this.showLoading();
-        
-        try {
-            // Get feedback from LLM
-            const feedback = await this.getFeedback(message);
-            
-            // Remove loading and show response
-            this.removeLoading(loadingId);
-            this.addMessage(feedback, 'assistant');
-            
-            this.updateStatus('Feedback provided', 'success');
-        } catch (error) {
-            this.removeLoading(loadingId);
-            this.addMessage('Sorry, I encountered an error while generating feedback. Please check your API configuration and try again.', 'assistant');
-            this.updateStatus(`Error: ${error.message}`, 'error');
-            console.error('Error:', error);
-        } finally {
-            this.setInputState(true);
-        }
+        // Show feedback style selector
+        this.showFeedbackStyleSelector(message);
     }
 
-    async getFeedback(performanceNotes) {
-        const systemPrompt = `You are an experienced and empathetic manager providing constructive feedback to employees. Your role is to:
+    showFeedbackStyleSelector(performanceNotes) {
+        // Create style selector modal
+        const selectorDiv = document.createElement('div');
+        selectorDiv.className = 'feedback-style-selector';
+        selectorDiv.innerHTML = `
+            <div class="style-selector-content">
+                <h3>Choose Feedback Style</h3>
+                <p class="selector-description">How would you like to receive feedback on your performance notes?</p>
+                
+                <div class="style-options">
+                    <label class="style-option">
+                        <input type="radio" name="feedbackStyle" value="default" checked>
+                        <div class="option-content">
+                            <strong>🎯 Default Manager Feedback</strong>
+                            <small>Balanced, constructive feedback with acknowledgments and growth suggestions</small>
+                        </div>
+                    </label>
+                    
+                    <label class="style-option">
+                        <input type="radio" name="feedbackStyle" value="concise">
+                        <div class="option-content">
+                            <strong>⚡ Concise & Direct</strong>
+                            <small>Brief, to-the-point feedback focusing on key areas</small>
+                        </div>
+                    </label>
+                    
+                    <label class="style-option">
+                        <input type="radio" name="feedbackStyle" value="detailed">
+                        <div class="option-content">
+                            <strong>📊 Detailed & Developmental</strong>
+                            <small>In-depth analysis with specific development recommendations</small>
+                        </div>
+                    </label>
+                    
+                    <label class="style-option">
+                        <input type="radio" name="feedbackStyle" value="strength">
+                        <div class="option-content">
+                            <strong>💪 Strength-Focused</strong>
+                            <small>Emphasize strengths and positive contributions</small>
+                        </div>
+                    </label>
+                    
+                    <label class="style-option">
+                        <input type="radio" name="feedbackStyle" value="improvement">
+                        <div class="option-content">
+                            <strong>🎓 Growth & Improvement</strong>
+                            <small>Focus on areas for improvement and learning opportunities</small>
+                        </div>
+                    </label>
+                    
+                    <label class="style-option">
+                        <input type="radio" name="feedbackStyle" value="custom">
+                        <div class="option-content">
+                            <strong>✏️ Custom Prompt</strong>
+                            <small>Write your own feedback instructions</small>
+                        </div>
+                    </label>
+                </div>
+                
+                <div id="customPromptArea" class="custom-prompt-area" style="display: none;">
+                    <label for="customPrompt">Custom Feedback Instructions:</label>
+                    <textarea 
+                        id="customPrompt" 
+                        class="custom-prompt-input" 
+                        placeholder="Example: Provide feedback as if you're a senior technical lead, focusing on technical skills and code quality..."
+                        rows="4"
+                    ></textarea>
+                </div>
+                
+                <div class="selector-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelStyle">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="generateFeedback">Generate Feedback</button>
+                </div>
+            </div>
+        `;
+        
+        this.messagesArea.appendChild(selectorDiv);
+        this.scrollToBottom();
+        
+        // Handle custom prompt toggle
+        const customRadio = selectorDiv.querySelector('input[value="custom"]');
+        const customPromptArea = selectorDiv.querySelector('#customPromptArea');
+        const allRadios = selectorDiv.querySelectorAll('input[name="feedbackStyle"]');
+        
+        allRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.value === 'custom') {
+                    customPromptArea.style.display = 'block';
+                } else {
+                    customPromptArea.style.display = 'none';
+                }
+            });
+        });
+        
+        // Handle generate button
+        const generateBtn = selectorDiv.querySelector('#generateFeedback');
+        generateBtn.addEventListener('click', async () => {
+            const selectedStyle = selectorDiv.querySelector('input[name="feedbackStyle"]:checked').value;
+            let customPrompt = '';
+            
+            if (selectedStyle === 'custom') {
+                customPrompt = selectorDiv.querySelector('#customPrompt').value.trim();
+                if (!customPrompt) {
+                    alert('Please enter your custom feedback instructions');
+                    return;
+                }
+            }
+            
+            // Remove selector
+            selectorDiv.remove();
+            
+            // Disable input while processing
+            this.setInputState(false);
+            
+            // Display user message
+            this.addMessage(performanceNotes, 'user');
+            
+            // Clear input
+            this.userInput.value = '';
+            this.userInput.style.height = 'auto';
+            
+            // Show loading indicator
+            const loadingId = this.showLoading();
+            
+            try {
+                // Get feedback from LLM with selected style
+                const feedback = await this.getFeedback(performanceNotes, selectedStyle, customPrompt);
+                
+                // Remove loading and show response
+                this.removeLoading(loadingId);
+                this.addMessage(feedback, 'assistant');
+                
+                this.updateStatus('Feedback provided', 'success');
+            } catch (error) {
+                this.removeLoading(loadingId);
+                this.addMessage('Sorry, I encountered an error while generating feedback. Please check your API configuration and try again.', 'assistant');
+                this.updateStatus(`Error: ${error.message}`, 'error');
+                console.error('Error:', error);
+            } finally {
+                this.setInputState(true);
+            }
+        });
+        
+        // Handle cancel button
+        const cancelBtn = selectorDiv.querySelector('#cancelStyle');
+        cancelBtn.addEventListener('click', () => {
+            selectorDiv.remove();
+            this.updateStatus('Feedback cancelled', '');
+        });
+    }
 
-1. Acknowledge the employee's accomplishments and efforts
-2. Provide specific, actionable feedback
-3. Highlight strengths and areas for improvement
-4. Offer encouragement and support
-5. Suggest concrete next steps or development opportunities
-6. Maintain a professional, supportive, and motivating tone
-
-Keep your feedback concise (2-3 paragraphs), balanced, and focused on growth. Be specific rather than generic.`;
+    async getFeedback(performanceNotes, style = 'default', customPrompt = '') {
+        let systemPrompt;
+        
+        if (style === 'custom' && customPrompt) {
+            systemPrompt = customPrompt;
+        } else {
+            systemPrompt = this.getSystemPromptForStyle(style);
+        }
 
         const userPrompt = `Here are the performance notes from an employee:\n\n"${performanceNotes}"\n\nPlease provide constructive managerial feedback.`;
 
@@ -232,6 +352,63 @@ Keep your feedback concise (2-3 paragraphs), balanced, and focused on growth. Be
 
         const data = await response.json();
         return data.choices[0].message.content;
+    }
+
+    getSystemPromptForStyle(style) {
+        const prompts = {
+            default: `You are an experienced and empathetic manager providing constructive feedback to employees. Your role is to:
+
+1. Acknowledge the employee's accomplishments and efforts
+2. Provide specific, actionable feedback
+3. Highlight strengths and areas for improvement
+4. Offer encouragement and support
+5. Suggest concrete next steps or development opportunities
+6. Maintain a professional, supportive, and motivating tone
+
+Keep your feedback concise (2-3 paragraphs), balanced, and focused on growth. Be specific rather than generic.`,
+
+            concise: `You are a direct and efficient manager. Provide brief, to-the-point feedback that:
+
+1. Quickly identifies key strengths
+2. Highlights 1-2 main areas for improvement
+3. Gives one clear action item
+
+Keep it under 150 words. Be direct but respectful.`,
+
+            detailed: `You are a developmental coach providing comprehensive feedback. Your detailed analysis should:
+
+1. Thoroughly examine all aspects of the performance notes
+2. Provide specific examples and context for observations
+3. Offer multiple development strategies and resources
+4. Create a structured improvement plan with timelines
+5. Address both technical and soft skills
+6. Suggest mentorship or training opportunities
+
+Provide 3-4 paragraphs with actionable, detailed guidance.`,
+
+            strength: `You are an appreciative and encouraging manager. Focus on:
+
+1. Celebrating accomplishments and positive contributions
+2. Highlighting specific strengths demonstrated
+3. Connecting strengths to organizational value
+4. Encouraging continued excellence
+5. Suggesting ways to leverage strengths further
+
+Be enthusiastic and specific about what was done well. Keep tone uplifting and motivating.`,
+
+            improvement: `You are a growth-oriented coach. Provide constructive feedback that:
+
+1. Identifies specific areas needing development
+2. Explains why these areas matter
+3. Provides concrete learning strategies
+4. Suggests resources, training, or mentorship
+5. Sets realistic improvement goals
+6. Offers encouragement for growth
+
+Be honest but supportive. Focus on learning and development opportunities.`
+        };
+        
+        return prompts[style] || prompts.default;
     }
 
     addMessage(content, role) {
