@@ -1,12 +1,14 @@
 // Main application logic
 class FeedbackManager {
     constructor() {
-        this.messagesArea = document.getElementById('messagesArea');
-        this.userInput = document.getElementById('userInput');
-        this.sendButton = document.getElementById('sendButton');
+        this.performanceInput = document.getElementById('performanceInput');
+        this.generateButton = document.getElementById('generateButton');
         this.statusText = document.getElementById('statusText');
         this.settingsButton = document.getElementById('settingsButton');
         this.settingsModal = document.getElementById('settingsModal');
+        this.resultsPanel = document.getElementById('resultsPanel');
+        this.feedbackOutput = document.getElementById('feedbackOutput');
+        this.clearResultsButton = document.getElementById('clearResultsButton');
         
         this.initializeEventListeners();
         this.initializeSettingsModal();
@@ -14,24 +16,28 @@ class FeedbackManager {
     }
 
     initializeEventListeners() {
-        // Send button click
-        this.sendButton.addEventListener('click', () => this.handleSend());
+        // Generate button click
+        this.generateButton.addEventListener('click', () => this.handleGenerate());
         
-        // Enter key to send (Ctrl+Enter)
-        this.userInput.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && e.key === 'Enter') {
-                this.handleSend();
-            }
-        });
-
-        // Auto-resize textarea
-        this.userInput.addEventListener('input', () => {
-            this.userInput.style.height = 'auto';
-            this.userInput.style.height = this.userInput.scrollHeight + 'px';
-        });
-
+        // Clear results button click
+        this.clearResultsButton.addEventListener('click', () => this.clearResults());
+        
         // Settings button
         this.settingsButton.addEventListener('click', () => this.openSettings());
+        
+        // Handle custom prompt toggle
+        const styleRadios = document.querySelectorAll('input[name="feedbackStyle"]');
+        const customPromptArea = document.getElementById('customPromptArea');
+        
+        styleRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.value === 'custom') {
+                    customPromptArea.style.display = 'block';
+                } else {
+                    customPromptArea.style.display = 'none';
+                }
+            });
+        });
     }
 
     initializeSettingsModal() {
@@ -128,185 +134,116 @@ class FeedbackManager {
         
         if (!hasCredentials) {
             this.updateStatus('⚙️ Please configure your API credentials', 'error');
-            this.sendButton.disabled = true;
-            this.userInput.disabled = true;
+            this.generateButton.disabled = true;
+            this.performanceInput.disabled = true;
             // Auto-open settings on first load
             setTimeout(() => this.openSettings(), 500);
         } else {
             const credentials = window.credentialManager.getCredentials();
             if (credentials) {
                 this.updateStatus('✅ Ready to provide feedback', 'success');
-                this.sendButton.disabled = false;
-                this.userInput.disabled = false;
+                this.generateButton.disabled = false;
+                this.performanceInput.disabled = false;
             } else {
                 this.updateStatus('⚠️ Invalid credentials stored. Please reconfigure.', 'error');
-                this.sendButton.disabled = true;
-                this.userInput.disabled = true;
+                this.generateButton.disabled = true;
+                this.performanceInput.disabled = true;
             }
         }
     }
 
-    async handleSend() {
-        const message = this.userInput.value.trim();
+    async handleGenerate() {
+        const performanceNotes = this.performanceInput.value.trim();
         
-        if (!message) {
+        if (!performanceNotes) {
             this.updateStatus('Please enter your performance notes', 'error');
             return;
         }
 
-        // Show feedback style selector
-        this.showFeedbackStyleSelector(message);
+        // Get selected feedback style
+        const selectedStyleRadio = document.querySelector('input[name="feedbackStyle"]:checked');
+        if (!selectedStyleRadio) {
+            this.updateStatus('Please select a feedback style', 'error');
+            return;
+        }
+
+        const selectedStyle = selectedStyleRadio.value;
+        let customPrompt = '';
+        
+        if (selectedStyle === 'custom') {
+            customPrompt = document.getElementById('customPrompt').value.trim();
+            if (!customPrompt) {
+                this.updateStatus('Please enter your custom feedback instructions', 'error');
+                return;
+            }
+        }
+
+        // Disable generate button while processing
+        this.generateButton.disabled = true;
+        this.updateStatus('🤔 Generating feedback...', 'loading');
+        
+        try {
+            const feedback = await this.getFeedback(performanceNotes, selectedStyle, customPrompt);
+            
+            // Show results panel
+            this.resultsPanel.style.display = 'flex';
+            this.feedbackOutput.innerHTML = this.formatFeedback(feedback);
+            
+            // Reset scroll position of feedback output to top
+            this.feedbackOutput.scrollTop = 0;
+            
+            this.updateStatus('✅ Feedback generated successfully', 'success');
+        } catch (error) {
+            console.error('Error generating feedback:', error);
+            this.updateStatus(`❌ Error: ${error.message}`, 'error');
+        } finally {
+            this.generateButton.disabled = false;
+        }
     }
 
-    showFeedbackStyleSelector(performanceNotes) {
-        // Create style selector modal
-        const selectorDiv = document.createElement('div');
-        selectorDiv.className = 'feedback-style-selector';
-        selectorDiv.innerHTML = `
-            <div class="style-selector-content">
-                <h3>Choose Feedback Style</h3>
-                <p class="selector-description">How would you like to receive feedback on your performance notes?</p>
-                
-                <div class="style-options">
-                    <label class="style-option">
-                        <input type="radio" name="feedbackStyle" value="default" checked>
-                        <div class="option-content">
-                            <strong>🎯 Default Manager Feedback</strong>
-                            <small>Balanced, constructive feedback with acknowledgments and growth suggestions</small>
-                        </div>
-                    </label>
-                    
-                    <label class="style-option">
-                        <input type="radio" name="feedbackStyle" value="concise">
-                        <div class="option-content">
-                            <strong>⚡ Concise & Direct</strong>
-                            <small>Brief, to-the-point feedback focusing on key areas</small>
-                        </div>
-                    </label>
-                    
-                    <label class="style-option">
-                        <input type="radio" name="feedbackStyle" value="detailed">
-                        <div class="option-content">
-                            <strong>📊 Detailed & Developmental</strong>
-                            <small>In-depth analysis with specific development recommendations</small>
-                        </div>
-                    </label>
-                    
-                    <label class="style-option">
-                        <input type="radio" name="feedbackStyle" value="strength">
-                        <div class="option-content">
-                            <strong>💪 Strength-Focused</strong>
-                            <small>Emphasize strengths and positive contributions</small>
-                        </div>
-                    </label>
-                    
-                    <label class="style-option">
-                        <input type="radio" name="feedbackStyle" value="improvement">
-                        <div class="option-content">
-                            <strong>🎓 Growth & Improvement</strong>
-                            <small>Focus on areas for improvement and learning opportunities</small>
-                        </div>
-                    </label>
-                    
-                    <label class="style-option">
-                        <input type="radio" name="feedbackStyle" value="custom">
-                        <div class="option-content">
-                            <strong>✏️ Custom Prompt</strong>
-                            <small>Write your own feedback instructions</small>
-                        </div>
-                    </label>
-                </div>
-                
-                <div id="customPromptArea" class="custom-prompt-area" style="display: none;">
-                    <label for="customPrompt">Custom Feedback Instructions:</label>
-                    <textarea 
-                        id="customPrompt" 
-                        class="custom-prompt-input" 
-                        placeholder="Example: Provide feedback as if you're a senior technical lead, focusing on technical skills and code quality..."
-                        rows="4"
-                    ></textarea>
-                </div>
-                
-                <div class="selector-actions">
-                    <button type="button" class="btn btn-secondary" id="cancelStyle">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="generateFeedback">Generate Feedback</button>
-                </div>
-            </div>
-        `;
+    clearResults() {
+        // Hide results panel
+        this.resultsPanel.style.display = 'none';
+        this.feedbackOutput.innerHTML = '';
+        this.updateStatus('✅ Ready to provide feedback', 'success');
+    }
+
+    resetForm() {
+        // Clear everything
+        this.performanceInput.value = '';
+        this.clearResults();
         
-        this.messagesArea.appendChild(selectorDiv);
-        this.scrollToBottom();
+        // Reset to default style
+        document.getElementById('styleDefault').checked = true;
+        document.getElementById('customPromptArea').style.display = 'none';
+        document.getElementById('customPrompt').value = '';
         
-        // Handle custom prompt toggle
-        const customRadio = selectorDiv.querySelector('input[value="custom"]');
-        const customPromptArea = selectorDiv.querySelector('#customPromptArea');
-        const allRadios = selectorDiv.querySelectorAll('input[name="feedbackStyle"]');
+        this.updateStatus('✅ Ready to provide feedback', 'success');
+    }
+
+    formatFeedback(text) {
+        // Convert plain text feedback to formatted HTML
+        // Handle bold text markers (**, __)
+        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        text = text.replace(/__(.*?)__/g, '<strong>$1</strong>');
         
-        allRadios.forEach(radio => {
-            radio.addEventListener('change', () => {
-                if (radio.value === 'custom') {
-                    customPromptArea.style.display = 'block';
-                } else {
-                    customPromptArea.style.display = 'none';
-                }
-            });
-        });
+        // Handle bullet points and numbered lists
+        text = text.replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>');
+        text = text.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
         
-        // Handle generate button
-        const generateBtn = selectorDiv.querySelector('#generateFeedback');
-        generateBtn.addEventListener('click', async () => {
-            const selectedStyle = selectorDiv.querySelector('input[name="feedbackStyle"]:checked').value;
-            let customPrompt = '';
-            
-            if (selectedStyle === 'custom') {
-                customPrompt = selectorDiv.querySelector('#customPrompt').value.trim();
-                if (!customPrompt) {
-                    alert('Please enter your custom feedback instructions');
-                    return;
-                }
-            }
-            
-            // Remove selector
-            selectorDiv.remove();
-            
-            // Disable input while processing
-            this.setInputState(false);
-            
-            // Display user message
-            this.addMessage(performanceNotes, 'user');
-            
-            // Clear input
-            this.userInput.value = '';
-            this.userInput.style.height = 'auto';
-            
-            // Show loading indicator
-            const loadingId = this.showLoading();
-            
-            try {
-                // Get feedback from LLM with selected style
-                const feedback = await this.getFeedback(performanceNotes, selectedStyle, customPrompt);
-                
-                // Remove loading and show response
-                this.removeLoading(loadingId);
-                this.addMessage(feedback, 'assistant');
-                
-                this.updateStatus('Feedback provided', 'success');
-            } catch (error) {
-                this.removeLoading(loadingId);
-                this.addMessage('Sorry, I encountered an error while generating feedback. Please check your API configuration and try again.', 'assistant');
-                this.updateStatus(`Error: ${error.message}`, 'error');
-                console.error('Error:', error);
-            } finally {
-                this.setInputState(true);
-            }
-        });
+        // Wrap consecutive list items in ul tags
+        text = text.replace(/(<li>.*?<\/li>\n?)+/gs, '<ul>$&</ul>');
         
-        // Handle cancel button
-        const cancelBtn = selectorDiv.querySelector('#cancelStyle');
-        cancelBtn.addEventListener('click', () => {
-            selectorDiv.remove();
-            this.updateStatus('Feedback cancelled', '');
-        });
+        // Handle line breaks
+        text = text.replace(/\n\n/g, '</p><p>');
+        text = text.replace(/\n/g, '<br>');
+        
+        // Wrap in paragraph if not already formatted
+        if (!text.startsWith('<')) {
+            text = '<p>' + text + '</p>';
+        }
+        
+        return text;
     }
 
     async getFeedback(performanceNotes, style = 'default', customPrompt = '') {
@@ -411,65 +348,9 @@ Be honest but supportive. Focus on learning and development opportunities.`
         return prompts[style] || prompts.default;
     }
 
-    addMessage(content, role) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${role}-message`;
-        
-        const roleLabel = role === 'user' ? 'You' : 'Manager Feedback';
-        
-        messageDiv.innerHTML = `
-            <div class="message-role">${roleLabel}</div>
-            <div class="message-content">${this.escapeHtml(content)}</div>
-        `;
-        
-        this.messagesArea.appendChild(messageDiv);
-        this.scrollToBottom();
-    }
-
-    showLoading() {
-        const loadingId = 'loading-' + Date.now();
-        const loadingDiv = document.createElement('div');
-        loadingDiv.id = loadingId;
-        loadingDiv.className = 'message assistant-message';
-        loadingDiv.innerHTML = `
-            <div class="message-role">Manager Feedback</div>
-            <div class="loading">
-                <span>Analyzing your performance notes</span>
-                <div class="loading-dots">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </div>
-            </div>
-        `;
-        
-        this.messagesArea.appendChild(loadingDiv);
-        this.scrollToBottom();
-        return loadingId;
-    }
-
-    removeLoading(loadingId) {
-        const loadingElement = document.getElementById(loadingId);
-        if (loadingElement) {
-            loadingElement.remove();
-        }
-    }
-
-    setInputState(enabled) {
-        this.userInput.disabled = !enabled;
-        this.sendButton.disabled = !enabled;
-        if (enabled) {
-            this.userInput.focus();
-        }
-    }
-
     updateStatus(message, type = '') {
         this.statusText.textContent = message;
         this.statusText.className = 'status-text' + (type ? ' ' + type : '');
-    }
-
-    scrollToBottom() {
-        this.messagesArea.scrollTop = this.messagesArea.scrollHeight;
     }
 
     escapeHtml(text) {

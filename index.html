@@ -16,8 +16,116 @@
             </button>
         </header>
 
-        <div class="chat-container">
-            <div class="messages-area" id="messagesArea">
+        <div class="main-content">
+            <!-- Left Panel: Performance Notes -->
+            <div class="left-panel">
+                <div class="panel-header">
+                    <h3>📝 Performance Notes</h3>
+                    <p>Enter your achievements, challenges, or performance updates</p>
+                </div>
+                <div class="input-section">
+                    <textarea 
+                        id="performanceInput" 
+                        class="performance-input" 
+                        placeholder="Example:&#10;&#10;• Completed 5 projects this quarter, all delivered on time&#10;• Led the migration to the new platform successfully&#10;• Improved code quality by implementing automated testing&#10;• Collaborated well with design team on the new UI&#10;&#10;Enter your notes here..."
+                        rows="15"
+                    ></textarea>
+                    <div class="input-hint">
+                        <span>💡 Be specific about your accomplishments and challenges</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Feedback Style Selection -->
+            <div class="right-panel">
+                <div class="panel-header">
+                    <h3>🎯 Choose Feedback Style</h3>
+                    <p>Select how you'd like to receive feedback</p>
+                </div>
+                <div class="style-selection">
+                    <div class="style-options">
+                        <label class="style-option">
+                            <input type="radio" name="feedbackStyle" id="styleDefault" value="default" checked>
+                            <div class="option-content">
+                                <strong>🎯 Default Manager Feedback</strong>
+                                <small>Balanced, constructive feedback with acknowledgments and growth suggestions</small>
+                            </div>
+                        </label>
+                        
+                        <label class="style-option">
+                            <input type="radio" name="feedbackStyle" value="concise">
+                            <div class="option-content">
+                                <strong>⚡ Concise & Direct</strong>
+                                <small>Brief, to-the-point feedback focusing on key areas</small>
+                            </div>
+                        </label>
+                        
+                        <label class="style-option">
+                            <input type="radio" name="feedbackStyle" value="detailed">
+                            <div class="option-content">
+                                <strong>📊 Detailed & Developmental</strong>
+                                <small>In-depth analysis with specific development recommendations</small>
+                            </div>
+                        </label>
+                        
+                        <label class="style-option">
+                            <input type="radio" name="feedbackStyle" value="strength">
+                            <div class="option-content">
+                                <strong>💪 Strength-Focused</strong>
+                                <small>Emphasize strengths and positive contributions</small>
+                            </div>
+                        </label>
+                        
+                        <label class="style-option">
+                            <input type="radio" name="feedbackStyle" value="improvement">
+                            <div class="option-content">
+                                <strong>🎓 Growth & Improvement</strong>
+                                <small>Focus on areas for improvement and learning opportunities</small>
+                            </div>
+                        </label>
+                        
+                        <label class="style-option">
+                            <input type="radio" name="feedbackStyle" value="custom">
+                            <div class="option-content">
+                                <strong>✏️ Custom Prompt</strong>
+                                <small>Write your own feedback instructions</small>
+                            </div>
+                        </label>
+                    </div>
+                    
+                    <div id="customPromptArea" class="custom-prompt-area" style="display: none;">
+                        <label for="customPrompt">Custom Feedback Instructions:</label>
+                        <textarea 
+                            id="customPrompt" 
+                            class="custom-prompt-input" 
+                            placeholder="Example: Provide feedback as if you're a senior technical lead, focusing on technical skills and code quality..."
+                            rows="4"
+                        ></textarea>
+                    </div>
+                    
+                    <button id="generateButton" class="generate-button">
+                        <span class="button-text">Generate Feedback</span>
+                        <span class="button-icon">✨</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section: Full Width at Bottom -->
+        <div class="results-section" id="resultsPanel" style="display: none;">
+            <div class="results-header">
+                <h3>📋 Feedback Results</h3>
+                <button id="clearResultsButton" class="btn-icon-clear" title="Clear Results">✕ Clear</button>
+            </div>
+            <div class="feedback-output" id="feedbackOutput"></div>
+        </div>
+
+        <div id="statusBar" class="status-bar">
+            <span id="statusText" class="status-text">✅ Ready to provide feedback</span>
+        </div>
+
+        <div class="chat-container" style="display: none;">
+            <div class="messages-area-old" id="messagesAreaOld">
                 <div class="welcome-message">
                     <h2>Welcome! 👋</h2>
                     <p>I'm your AI Manager Assistant. Share your performance notes, achievements, or challenges, and I'll provide constructive feedback to help you grow.</p>
@@ -35,12 +143,12 @@
             <div class="input-container">
                 <div class="input-wrapper">
                     <textarea 
-                        id="userInput" 
+                        id="userInputOld" 
                         class="input-field" 
                         placeholder="Enter your performance notes here..."
                         rows="3"
                     ></textarea>
-                    <button id="sendButton" class="send-button">
+                    <button id="sendButtonOld" class="send-button">
                         <span class="button-text">Get Feedback</span>
                         <span class="button-icon">📤</span>
                     </button>
