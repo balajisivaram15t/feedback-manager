@@ -1,59 +1,140 @@
 # 🎯 Performance Feedback Manager
 
-An AI-powered chatbot that acts as a manager to provide constructive feedback on employee performance notes. Built with HTML, CSS, and JavaScript for simplicity and ease of use.
+An AI-powered application that provides constructive managerial feedback on employee performance notes. Now with **Azure Managed Identity support** for enterprise-grade security!
 
 ## ✨ Features
 
-- **Clean, Professional UI**: Modern chat interface designed for professional use
-- **AI-Powered Feedback**: Integrates with LLM models (OpenAI, Azure OpenAI, or compatible APIs)
+- **Clean, Professional UI**: Modern interface designed for professional use
+- **AI-Powered Feedback**: Powered by Azure OpenAI (gpt-4.1)
+- **Multiple Feedback Styles**: Choose from 5 pre-configured styles or create custom prompts
 - **Manager Perspective**: Provides constructive, actionable feedback from a managerial viewpoint
+- **Secure Authentication**: 
+  - Backend proxy with **Azure Managed Identity** (recommended)
+  - Azure Entra ID (Azure AD) authentication
+  - API Key authentication (if enabled)
 - **Responsive Design**: Works on desktop and mobile devices
-- **Easy Configuration**: Simple config file for API setup
-- **Privacy-Focused**: All processing happens through your configured API
+- **Privacy-Focused**: Enterprise-grade security with Azure RBAC
+
+## 🏗️ Architecture
+
+### Option 1: Backend Proxy with Managed Identity (Recommended) ⭐
+
+```
+User Browser → Frontend (HTML/JS) → Backend (Python Flask) → Azure OpenAI
+                                      ↑
+                                Managed Identity
+```
+
+**Benefits:**
+- ✅ No user authentication required
+- ✅ No API keys exposed
+- ✅ Managed Identity handles all auth
+- ✅ Easy to share - just send the URL!
+- ✅ Centralized access control
+
+### Option 2: Direct Azure AD Authentication
+
+```
+User Browser → Frontend (HTML/JS) → Azure AD Login → Azure OpenAI
+```
+
+**Benefits:**
+- ✅ User-level authentication
+- ✅ Individual audit trails
+- ✅ No backend needed
 
 ## 🚀 Quick Start
 
-### 1. Configure Your API
+### For Users (Production)
 
-Open `config.js` and update the following:
+If your admin has deployed this to Azure App Service:
 
-```javascript
-window.CONFIG = {
-    API_KEY: 'your-api-key-here',        // Your LLM API key
-    MODEL_NAME: 'gpt-3.5-turbo',         // Model to use
-    API_ENDPOINT: '...'                   // API endpoint (optional)
-};
+1. **Open the URL** provided by your admin
+2. **Enter performance notes** in the text area
+3. **Select feedback style**
+4. **Click "Generate Feedback"**
+5. Done! No login or setup required ✨
+
+### For Developers/Admins
+
+See detailed setup guides:
+
+- **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** - Deploy backend to Azure App Service with Managed Identity
+- **[AZURE_AUTH_SETUP.md](AZURE_AUTH_SETUP.md)** - Setup Azure AD authentication (alternative approach)
+
+## 🛠️ Local Development
+
+### Test Backend Locally
+
+```powershell
+# Navigate to backend
+cd backend
+
+# Create virtual environment
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Login to Azure
+az login
+
+# Run backend
+python app.py
 ```
 
-#### For OpenAI:
+Backend runs on `http://localhost:8080`
+
+### Test Frontend Locally
+
+1. Open `config.js` and ensure:
 ```javascript
-API_KEY: 'sk-...',  // Get from https://platform.openai.com/api-keys
-MODEL_NAME: 'gpt-3.5-turbo',  // or 'gpt-4', 'gpt-4-turbo'
-API_ENDPOINT: 'https://api.openai.com/v1/chat/completions'
+AUTH_MODE: 'backend',  // Use backend proxy
+BACKEND_API_URL: 'http://localhost:8080/api'
 ```
 
-#### For Azure OpenAI:
-```javascript
-API_KEY: 'your-azure-api-key',
-MODEL_NAME: 'your-deployment-name',
-API_ENDPOINT: 'https://your-resource.openai.azure.com/openai/deployments/your-deployment/chat/completions?api-version=2024-02-15-preview'
+2. Open `index.html` in your browser
+
+3. Enter performance notes and generate feedback!
+
+## 📁 Files Structure
+
+```
+meera-ask/
+├── backend/
+│   ├── app.py              # Flask API with Managed Identity
+│   ├── requirements.txt    # Python dependencies
+│   ├── startup.txt         # Azure App Service startup
+│   └── README.md          # Backend documentation
+├── index.html             # Frontend structure
+├── styles.css            # Styling and layout
+├── app.js               # Frontend logic
+├── config.js            # Configuration (backend URL, auth mode)
+├── auth.js              # Azure AD authentication (optional)
+├── credentials.js       # Credential manager
+├── DEPLOYMENT_GUIDE.md  # Azure deployment instructions
+└── README.md           # This file
 ```
 
-#### For Other Providers:
-Configure according to their OpenAI-compatible API specifications.
+## 🔐 Authentication Modes
 
-### 2. Open the Application
+Configure in `config.js`:
 
-Simply open `index.html` in your web browser:
-- Double-click the file, or
-- Right-click and select "Open with Browser", or
-- Use a local server (recommended for development)
+### Mode 1: Backend Proxy (Default)
+```javascript
+AUTH_MODE: 'backend',
+BACKEND_API_URL: 'https://your-app.azurewebsites.net/api'
+```
+- Users access the app - no login needed
+- Backend uses Managed Identity
 
-### 3. Use the Chatbot
-
-1. Enter employee performance notes in the text area
-2. Click "Get Feedback" or press `Ctrl+Enter`
-3. Receive AI-powered managerial feedback
+### Mode 2: Direct Azure AD
+```javascript
+AUTH_MODE: 'direct'
+```
+- Users sign in with Microsoft account
+- Requires App Registration setup
 
 ## 📝 Example Inputs
 

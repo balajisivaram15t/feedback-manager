@@ -45,6 +45,31 @@ class FeedbackManager {
         const credentialsForm = document.getElementById('credentialsForm');
         const toggleApiKey = document.getElementById('toggleApiKey');
         const clearCredentials = document.getElementById('clearCredentials');
+        const signInButton = document.getElementById('signInButton');
+        
+        // Handle authentication method toggle
+        const authMethodRadios = document.querySelectorAll('input[name="authMethod"]');
+        const entraIdSection = document.getElementById('entraIdSection');
+        const apiKeySection = document.getElementById('apiKeySection');
+        
+        authMethodRadios.forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.value === 'entra-id') {
+                    entraIdSection.style.display = 'block';
+                    apiKeySection.style.display = 'none';
+                } else {
+                    entraIdSection.style.display = 'none';
+                    apiKeySection.style.display = 'block';
+                }
+            });
+        });
+        
+        // Sign in with Azure AD
+        if (signInButton) {
+            signInButton.addEventListener('click', async () => {
+                await this.handleAzureSignIn();
+            });
+        }
         
         // Close modal
         closeModal.addEventListener('click', () => this.closeSettings());
@@ -57,16 +82,24 @@ class FeedbackManager {
         });
         
         // Toggle API key visibility
-        toggleApiKey.addEventListener('click', () => {
-            const apiKeyInput = document.getElementById('apiKey');
-            apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
-            toggleApiKey.textContent = apiKeyInput.type === 'password' ? '👁️' : '🙈';
-        });
+        if (toggleApiKey) {
+            toggleApiKey.addEventListener('click', () => {
+                const apiKeyInput = document.getElementById('apiKey');
+                if (apiKeyInput) {
+                    apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+                    toggleApiKey.textContent = apiKeyInput.type === 'password' ? '👁️' : '🙈';
+                }
+            });
+        }
         
         // Clear credentials
         clearCredentials.addEventListener('click', () => {
-            if (confirm('Are you sure you want to clear all stored credentials?')) {
+            if (confirm('Are you sure you want to clear all stored credentials and sign out?')) {
                 window.credentialManager.clearCredentials();
+                if (window.azureAuthManager) {
+                    window.azureAuthManager.signOut();
+                    window.azureAuthManager.clearConfig();
+                }
                 this.closeSettings();
                 this.checkConfiguration();
             }
@@ -79,17 +112,86 @@ class FeedbackManager {
         });
     }
 
+    async handleAzureSignIn() {
+        const clientId = document.getElementById('clientId').value.trim();
+        const tenantId = document.getElementById('tenantId').value.trim();
+        const signInStatus = document.getElementById('signInStatus');
+        
+        if (!clientId || !tenantId) {
+            signInStatus.textContent = '❌ Please enter Client ID and Tenant ID';
+            signInStatus.style.color = '#dc3545';
+            return;
+        }
+        
+        try {
+            signInStatus.textContent = '🔄 Initializing authentication...';
+            signInStatus.style.color = '#007bff';
+            
+            // Initialize MSAL
+            await window.azureAuthManager.initialize({ clientId, tenantId });
+            
+            signInStatus.textContent = '🔄 Opening sign-in window...';
+            
+            // Sign in
+            const result = await window.azureAuthManager.signIn();
+            
+            if (result.success) {
+                signInStatus.textContent = `✅ ${result.message}`;
+                signInStatus.style.color = '#28a745';
+            } else {
+                signInStatus.textContent = `❌ Sign-in failed: ${result.error}`;
+                signInStatus.style.color = '#dc3545';
+            }
+        } catch (error) {
+            signInStatus.textContent = `❌ Error: ${error.message}`;
+            signInStatus.style.color = '#dc3545';
+        }
+    }
+
     openSettings() {
         // Load existing credentials if any
         const credentials = window.credentialManager.getCredentials();
+        const azureConfig = window.azureAuthManager.getConfig();
+        
         if (credentials) {
-            document.getElementById('apiKey').value = credentials.apiKey;
+            // Set authentication method
+            const authMethod = credentials.authMethod || 'entra-id';
+            document.querySelector(`input[name="authMethod"][value="${authMethod}"]`).checked = true;
+            
+            // Show appropriate section
+            if (authMethod === 'entra-id') {
+                document.getElementById('entraIdSection').style.display = 'block';
+                document.getElementById('apiKeySection').style.display = 'none';
+            } else {
+                document.getElementById('entraIdSection').style.display = 'none';
+                document.getElementById('apiKeySection').style.display = 'block';
+                if (credentials.apiKey) {
+                    document.getElementById('apiKey').value = credentials.apiKey;
+                }
+            }
+            
             document.getElementById('modelName').value = credentials.modelName;
             document.getElementById('apiEndpoint').value = credentials.apiEndpoint;
         } else {
             // Set defaults
             document.getElementById('apiEndpoint').value = window.CONFIG.DEFAULT_ENDPOINT;
             document.getElementById('modelName').value = window.CONFIG.DEFAULT_MODEL;
+        }
+        
+        // Load Azure AD config if exists
+        if (azureConfig) {
+            document.getElementById('clientId').value = azureConfig.clientId || '';
+            document.getElementById('tenantId').value = azureConfig.tenantId || '';
+        }
+        
+        // Check if already signed in with Azure AD
+        if (window.azureAuthManager.isSignedIn()) {
+            const account = window.azureAuthManager.getCurrentAccount();
+            const signInStatus = document.getElementById('signInStatus');
+            if (signInStatus && account) {
+                signInStatus.textContent = `✅ Signed in as ${account.username}`;
+                signInStatus.style.color = '#28a745';
+            }
         }
         
         this.settingsModal.classList.add('show');
@@ -101,11 +203,28 @@ class FeedbackManager {
     }
 
     saveCredentials() {
+        const authMethod = document.querySelector('input[name="authMethod"]:checked').value;
+        
         const credentials = {
-            apiKey: document.getElementById('apiKey').value.trim(),
+            authMethod: authMethod,
             modelName: document.getElementById('modelName').value.trim(),
             apiEndpoint: document.getElementById('apiEndpoint').value.trim()
         };
+        
+        // Add API key if using api-key method
+        if (authMethod === 'api-key') {
+            credentials.apiKey = document.getElementById('apiKey').value.trim();
+        }
+        
+        // For Entra ID, verify user is signed in
+        if (authMethod === 'entra-id') {
+            if (!window.azureAuthManager.isSignedIn()) {
+                const errorMsg = document.getElementById('errorMessage');
+                errorMsg.textContent = 'Please sign in with Microsoft first';
+                errorMsg.classList.add('show');
+                return;
+            }
+        }
         
         // Validate
         const validation = window.credentialManager.validateCredentials(credentials);
@@ -121,7 +240,7 @@ class FeedbackManager {
         if (saved) {
             this.closeSettings();
             this.checkConfiguration();
-            this.updateStatus('✅ Credentials saved successfully', 'success');
+            this.updateStatus('✅ Configuration saved successfully', 'success');
         } else {
             const errorMsg = document.getElementById('errorMessage');
             errorMsg.textContent = 'Failed to save credentials. Please try again.';
@@ -130,6 +249,15 @@ class FeedbackManager {
     }
 
     checkConfiguration() {
+        // If using backend mode, no frontend credentials needed
+        if (window.CONFIG.AUTH_MODE === 'backend') {
+            this.updateStatus('✅ Ready to provide feedback (using backend API)', 'success');
+            this.generateButton.disabled = false;
+            this.performanceInput.disabled = false;
+            return;
+        }
+        
+        // For direct mode, check credentials
         const hasCredentials = window.credentialManager.hasCredentials();
         
         if (!hasCredentials) {
@@ -257,14 +385,8 @@ class FeedbackManager {
 
         const userPrompt = `Here are the performance notes from an employee:\n\n"${performanceNotes}"\n\nPlease provide constructive managerial feedback.`;
 
-        // Get credentials from secure storage
-        const credentials = window.credentialManager.getCredentials();
-        if (!credentials) {
-            throw new Error('No credentials found. Please configure your API settings.');
-        }
-        
         const requestBody = {
-            model: credentials.modelName,
+            model: window.CONFIG.DEFAULT_MODEL,
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt }
@@ -273,12 +395,79 @@ class FeedbackManager {
             max_tokens: window.CONFIG.MAX_TOKENS || 500
         };
 
+        // Check authentication mode
+        if (window.CONFIG.AUTH_MODE === 'backend') {
+            // Use backend proxy (no authentication needed from frontend)
+            return await this.callBackendAPI(requestBody);
+        } else {
+            // Use direct Azure AD authentication
+            return await this.callAzureDirectly(requestBody);
+        }
+    }
+
+    async callBackendAPI(requestBody) {
+        /**
+         * Call the backend proxy API
+         * Backend handles authentication with Managed Identity
+         */
+        try {
+            const backendUrl = window.CONFIG.BACKEND_API_URL || 'http://localhost:8080/api';
+            
+            const response = await fetch(`${backendUrl}/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Backend API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data.choices[0].message.content;
+        } catch (error) {
+            console.error('Backend API error:', error);
+            throw new Error(`Failed to connect to backend: ${error.message}`);
+        }
+    }
+
+    async callAzureDirectly(requestBody) {
+        /**
+         * Call Azure OpenAI directly with Azure AD authentication
+         * Requires user to be signed in via Azure AD
+         */
+        // Get credentials from secure storage
+        const credentials = window.credentialManager.getCredentials();
+        if (!credentials) {
+            throw new Error('No credentials found. Please configure your API settings.');
+        }
+
+        // Prepare headers based on authentication method
+        const headers = {
+            'Content-Type': 'application/json'
+        };
+
+        if (credentials.authMethod === 'api-key') {
+            // Use API key authentication
+            headers['api-key'] = credentials.apiKey;
+        } else if (credentials.authMethod === 'entra-id') {
+            // Use Azure Entra ID token authentication
+            try {
+                const token = await window.azureAuthManager.getAccessToken();
+                headers['Authorization'] = `Bearer ${token}`;
+            } catch (error) {
+                throw new Error(`Authentication failed: ${error.message}. Please sign in again.`);
+            }
+        } else {
+            throw new Error('Invalid authentication method');
+        }
+
         const response = await fetch(credentials.apiEndpoint, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${credentials.apiKey}`
-            },
+            headers: headers,
             body: JSON.stringify(requestBody)
         });
 

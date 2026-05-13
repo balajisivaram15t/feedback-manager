@@ -1,5 +1,6 @@
 // Secure Credential Manager
 // Handles secure storage and retrieval of API credentials using browser localStorage
+// Supports both API Key and Azure Entra ID authentication
 
 class CredentialManager {
     constructor() {
@@ -10,7 +11,8 @@ class CredentialManager {
     /**
      * Save credentials to secure storage
      * @param {Object} credentials - The credentials object
-     * @param {string} credentials.apiKey - API key
+     * @param {string} credentials.authMethod - Authentication method: 'api-key' or 'entra-id'
+     * @param {string} credentials.apiKey - API key (for api-key method)
      * @param {string} credentials.modelName - Model name
      * @param {string} credentials.apiEndpoint - API endpoint
      */
@@ -43,7 +45,7 @@ class CredentialManager {
             const credentials = JSON.parse(atob(encoded));
             
             // Validate credentials structure
-            if (!credentials.apiKey || !credentials.modelName) {
+            if (!credentials.modelName || !credentials.authMethod) {
                 return null;
             }
             
@@ -77,12 +79,21 @@ class CredentialManager {
     validateCredentials(credentials) {
         const errors = [];
 
-        if (!credentials.apiKey || credentials.apiKey.trim().length === 0) {
-            errors.push('API Key is required');
-        } else if (credentials.apiKey === 'your-api-key-here') {
-            errors.push('Please enter a valid API Key');
+        // Validate authentication method
+        if (!credentials.authMethod) {
+            errors.push('Authentication method is required');
         }
 
+        // Validate based on authentication method
+        if (credentials.authMethod === 'api-key') {
+            if (!credentials.apiKey || credentials.apiKey.trim().length === 0) {
+                errors.push('API Key is required for API Key authentication');
+            } else if (credentials.apiKey === 'your-api-key-here') {
+                errors.push('Please enter a valid API Key');
+            }
+        }
+
+        // Common validations
         if (!credentials.modelName || credentials.modelName.trim().length === 0) {
             errors.push('Model Name is required');
         }

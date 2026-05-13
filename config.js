@@ -4,16 +4,20 @@
 // Last updated: 2025-11-11
 
 window.CONFIG = {
-    // Default API Endpoint (can be overridden in settings)
-    DEFAULT_ENDPOINT: 'https://testaimodel-sbal.cognitiveservices.azure.com/openai/deployments/gpt-4o-mini/chat/completions?api-version=2025-01-01-preview',
+    // Backend API Endpoint (local or Azure App Service)
+    BACKEND_API_URL: 'https://feedback-manager-app.victoriousdesert-7290a895.eastus2.azurecontainerapps.io/api',  // Your deployed backend
     
-    // Default Model (can be overridden in settings)
-    DEFAULT_MODEL: 'gpt-4o-mini',
+    // Azure OpenAI Configuration (used by backend)
+    DEFAULT_ENDPOINT: 'https://testaimodel-sbal.services.ai.azure.com/openai/deployments/gpt-4.1/chat/completions?api-version=2024-10-21',
+    DEFAULT_MODEL: 'gpt-4.1',
     
     // Application Settings
     APP_NAME: 'Performance Feedback Manager',
     MAX_TOKENS: 500,
-    TEMPERATURE: 0.7
+    TEMPERATURE: 0.7,
+    
+    // Authentication Mode: 'backend' (uses backend proxy) or 'direct' (direct Azure AD)
+    AUTH_MODE: 'backend'  // Set to 'backend' to use the proxy
 };
 
 // NOTE: API credentials are managed through the Settings modal (⚙️ button)

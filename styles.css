@@ -1048,6 +1048,65 @@ body {
     font-size: 20px;
 }
 
+/* Authentication Method Styles */
+.auth-method-selection {
+    margin-bottom: 24px;
+}
+
+.auth-option {
+    display: flex;
+    align-items: flex-start;
+    padding: 12px;
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 12px;
+}
+
+.auth-option:hover {
+    border-color: var(--primary-color);
+    background: var(--bg-color);
+}
+
+.auth-option input[type="radio"] {
+    margin-right: 12px;
+    margin-top: 2px;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+.auth-option:has(input:checked) {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.auth-section {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--bg-color);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.common-settings {
+    padding-top: 16px;
+    border-top: 2px solid var(--border-color);
+}
+
+.status-message {
+    margin-top: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    display: none;
+}
+
+.status-message:not(:empty) {
+    display: block;
+}
+
 .selector-description {
     color: var(--text-secondary);
     margin-bottom: 20px;
