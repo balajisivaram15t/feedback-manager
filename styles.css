@@ -98,6 +98,60 @@ body {
     margin: 0 auto;
 }
 
+/* Core Priorities Section - Full Width at Top */
+.priorities-section {
+    grid-column: 1 / -1;  /* Span both columns */
+    display: flex;
+    flex-direction: column;
+    background: var(--card-bg);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md);
+    border: 2px solid #fbbf24;  /* Gold border to highlight importance */
+    overflow: hidden;
+}
+
+.priorities-input {
+    width: 100%;
+    padding: 16px 20px;
+    border: none;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: vertical;
+    background: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.priorities-input:focus {
+    outline: none;
+    background: #fffbeb;  /* Light yellow tint when focused */
+}
+
+.priorities-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: #fef3c7;  /* Light yellow background */
+    border-top: 1px solid #fbbf24;
+}
+
+.btn-clear-priorities {
+    padding: 6px 12px;
+    background: white;
+    border: 1px solid #f59e0b;
+    border-radius: 6px;
+    color: #f59e0b;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.btn-clear-priorities:hover {
+    background: #fef3c7;
+}
+
 .left-panel, .right-panel {
     display: flex;
     flex-direction: column;

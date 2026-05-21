@@ -2,6 +2,8 @@
 class FeedbackManager {
     constructor() {
         this.performanceInput = document.getElementById('performanceInput');
+        this.corePriorities = document.getElementById('corePriorities');
+        this.clearPrioritiesButton = document.getElementById('clearPriorities');
         this.generateButton = document.getElementById('generateButton');
         this.statusText = document.getElementById('statusText');
         this.settingsButton = document.getElementById('settingsButton');
@@ -10,9 +12,40 @@ class FeedbackManager {
         this.feedbackOutput = document.getElementById('feedbackOutput');
         this.clearResultsButton = document.getElementById('clearResultsButton');
         
+        this.PRIORITIES_STORAGE_KEY = 'feedback_manager_core_priorities';
+        
+        this.loadCorePriorities();
         this.initializeEventListeners();
         this.initializeSettingsModal();
         this.checkConfiguration();
+    }
+
+    loadCorePriorities() {
+        // Load saved priorities from localStorage
+        const savedPriorities = localStorage.getItem(this.PRIORITIES_STORAGE_KEY);
+        if (savedPriorities && this.corePriorities) {
+            this.corePriorities.value = savedPriorities;
+        }
+    }
+
+    saveCorePriorities() {
+        // Auto-save priorities to localStorage
+        if (this.corePriorities) {
+            const priorities = this.corePriorities.value.trim();
+            if (priorities) {
+                localStorage.setItem(this.PRIORITIES_STORAGE_KEY, priorities);
+            } else {
+                localStorage.removeItem(this.PRIORITIES_STORAGE_KEY);
+            }
+        }
+    }
+
+    clearCorePriorities() {
+        if (confirm('Are you sure you want to clear your core priorities? They will be permanently deleted.')) {
+            this.corePriorities.value = '';
+            localStorage.removeItem(this.PRIORITIES_STORAGE_KEY);
+            this.updateStatus('✅ Core priorities cleared', 'success');
+        }
     }
 
     initializeEventListeners() {
@@ -24,6 +57,17 @@ class FeedbackManager {
         
         // Settings button
         this.settingsButton.addEventListener('click', () => this.openSettings());
+        
+        // Core Priorities auto-save
+        if (this.corePriorities) {
+            this.corePriorities.addEventListener('input', () => this.saveCorePriorities());
+            this.corePriorities.addEventListener('blur', () => this.saveCorePriorities());
+        }
+        
+        // Clear priorities button
+        if (this.clearPrioritiesButton) {
+            this.clearPrioritiesButton.addEventListener('click', () => this.clearCorePriorities());
+        }
         
         // Handle custom prompt toggle
         const styleRadios = document.querySelectorAll('input[name="feedbackStyle"]');
@@ -282,6 +326,7 @@ class FeedbackManager {
 
     async handleGenerate() {
         const performanceNotes = this.performanceInput.value.trim();
+        const corePriorities = this.corePriorities ? this.corePriorities.value.trim() : '';
         
         if (!performanceNotes) {
             this.updateStatus('Please enter your performance notes', 'error');
@@ -311,7 +356,7 @@ class FeedbackManager {
         this.updateStatus('🤔 Generating feedback...', 'loading');
         
         try {
-            const feedback = await this.getFeedback(performanceNotes, selectedStyle, customPrompt);
+            const feedback = await this.getFeedback(performanceNotes, selectedStyle, customPrompt, corePriorities);
             
             // Show results panel
             this.resultsPanel.style.display = 'flex';
@@ -374,7 +419,7 @@ class FeedbackManager {
         return text;
     }
 
-    async getFeedback(performanceNotes, style = 'default', customPrompt = '') {
+    async getFeedback(performanceNotes, style = 'default', customPrompt = '', corePriorities = '') {
         let systemPrompt;
         
         if (style === 'custom' && customPrompt) {
@@ -383,7 +428,14 @@ class FeedbackManager {
             systemPrompt = this.getSystemPromptForStyle(style);
         }
 
-        const userPrompt = `Here are the performance notes from an employee:\n\n"${performanceNotes}"\n\nPlease provide constructive managerial feedback.`;
+        // Build user prompt with core priorities and performance notes
+        let userPrompt = '';
+        if (corePriorities && corePriorities.trim()) {
+            userPrompt = `**Core Priorities & Objectives:**\n${corePriorities}\n\n**Performance Notes & Achievements:**\n${performanceNotes}\n\nPlease provide constructive managerial feedback, evaluating how the achievements align with the core priorities. Highlight areas where the employee met or exceeded their objectives, and identify any gaps or opportunities for improvement.`;
+        } else {
+            // Fallback to original format if no priorities provided
+            userPrompt = `Here are the performance notes from an employee:\n\n"${performanceNotes}"\n\nPlease provide constructive managerial feedback.`;
+        }
 
         const requestBody = {
             model: window.CONFIG.DEFAULT_MODEL,
@@ -484,54 +536,62 @@ class FeedbackManager {
         const prompts = {
             default: `You are an experienced and empathetic manager providing constructive feedback to employees. Your role is to:
 
-1. Acknowledge the employee's accomplishments and efforts
-2. Provide specific, actionable feedback
-3. Highlight strengths and areas for improvement
-4. Offer encouragement and support
-5. Suggest concrete next steps or development opportunities
-6. Maintain a professional, supportive, and motivating tone
+1. Review the employee's core priorities and objectives, if provided
+2. Evaluate how their achievements and performance notes align with those priorities
+3. Acknowledge the employee's accomplishments and efforts
+4. Identify areas where objectives were met, exceeded, or need more focus
+5. Provide specific, actionable feedback
+6. Highlight strengths and areas for improvement
+7. Offer encouragement and support
+8. Suggest concrete next steps or development opportunities
+9. Maintain a professional, supportive, and motivating tone
 
-Keep your feedback concise (2-3 paragraphs), balanced, and focused on growth. Be specific rather than generic.`,
+When core priorities are provided, explicitly compare them against the achievements. When they're not provided, focus on the performance notes themselves. Keep your feedback concise (2-3 paragraphs), balanced, and focused on growth. Be specific rather than generic.`,
 
             concise: `You are a direct and efficient manager. Provide brief, to-the-point feedback that:
 
-1. Quickly identifies key strengths
-2. Highlights 1-2 main areas for improvement
-3. Gives one clear action item
+1. Quickly assesses alignment between priorities and achievements (if priorities provided)
+2. Identifies key strengths
+3. Highlights 1-2 main areas for improvement or gaps
+4. Gives one clear action item
 
 Keep it under 150 words. Be direct but respectful.`,
 
             detailed: `You are a developmental coach providing comprehensive feedback. Your detailed analysis should:
 
-1. Thoroughly examine all aspects of the performance notes
-2. Provide specific examples and context for observations
-3. Offer multiple development strategies and resources
-4. Create a structured improvement plan with timelines
-5. Address both technical and soft skills
-6. Suggest mentorship or training opportunities
+1. Thoroughly compare core priorities against actual achievements (if priorities provided)
+2. Identify which objectives were met, exceeded, or missed
+3. Examine all aspects of the performance notes with specific examples
+4. Provide context for observations about alignment and gaps
+5. Offer multiple development strategies and resources
+6. Create a structured improvement plan with timelines
+7. Address both technical and soft skills
+8. Suggest mentorship or training opportunities
 
-Provide 3-4 paragraphs with actionable, detailed guidance.`,
+Provide 3-4 paragraphs with actionable, detailed guidance that links back to stated priorities.`,
 
             strength: `You are an appreciative and encouraging manager. Focus on:
 
-1. Celebrating accomplishments and positive contributions
-2. Highlighting specific strengths demonstrated
-3. Connecting strengths to organizational value
-4. Encouraging continued excellence
-5. Suggesting ways to leverage strengths further
+1. Celebrating how achievements aligned with or exceeded core priorities
+2. Highlighting accomplishments and positive contributions
+3. Recognizing specific strengths demonstrated
+4. Connecting strengths to organizational value and stated objectives
+5. Encouraging continued excellence
+6. Suggesting ways to leverage strengths further
 
-Be enthusiastic and specific about what was done well. Keep tone uplifting and motivating.`,
+Be enthusiastic and specific about what was done well and how it met objectives. Keep tone uplifting and motivating.`,
 
             improvement: `You are a growth-oriented coach. Provide constructive feedback that:
 
-1. Identifies specific areas needing development
-2. Explains why these areas matter
-3. Provides concrete learning strategies
-4. Suggests resources, training, or mentorship
-5. Sets realistic improvement goals
-6. Offers encouragement for growth
+1. Identifies gaps between core priorities and achievements (if priorities provided)
+2. Explains specific areas needing development
+3. Clarifies why these areas matter for meeting objectives
+4. Provides concrete learning strategies
+5. Suggests resources, training, or mentorship
+6. Sets realistic improvement goals aligned with priorities
+7. Offers encouragement for growth
 
-Be honest but supportive. Focus on learning and development opportunities.`
+Be honest but supportive. Focus on learning and development opportunities that will help achieve core objectives.`
         };
         
         return prompts[style] || prompts.default;

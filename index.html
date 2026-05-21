@@ -19,11 +19,31 @@
         </header>
 
         <div class="main-content">
+            <!-- Core Priorities Section - Full Width at Top -->
+            <div class="priorities-section">
+                <div class="panel-header">
+                    <h3>🎯 Core Priorities</h3>
+                    <p>Define your key focus areas and objectives (these stay persistent until you update them)</p>
+                </div>
+                <div class="input-section">
+                    <textarea 
+                        id="corePriorities" 
+                        class="priorities-input" 
+                        placeholder="Example:&#10;&#10;• Complete Q4 product launch on schedule&#10;• Improve team collaboration and cross-functional communication&#10;• Reduce technical debt by 20%&#10;• Mentor 2 junior team members&#10;&#10;Enter your core priorities here..."
+                        rows="6"
+                    ></textarea>
+                    <div class="priorities-controls">
+                        <span class="input-hint">💡 These priorities will be saved and persist across sessions</span>
+                        <button id="clearPriorities" class="btn-clear-priorities" title="Clear priorities">Clear</button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Left Panel: Performance Notes -->
             <div class="left-panel">
                 <div class="panel-header">
-                    <h3>📝 Performance Notes</h3>
-                    <p>Enter your achievements, challenges, or performance updates</p>
+                    <h3>📝 Performance Notes & Achievements</h3>
+                    <p>Enter what you've accomplished and any challenges faced</p>
                 </div>
                 <div class="input-section">
                     <textarea 
