@@ -13,7 +13,7 @@ window.CONFIG = {
     
     // Application Settings
     APP_NAME: 'Performance Feedback Manager',
-    MAX_TOKENS: 500,
+    MAX_TOKENS: 2500,  // Increased to support detailed table formats and comprehensive feedback
     TEMPERATURE: 0.7,
     
     // Authentication Mode: 'backend' (uses backend proxy) or 'direct' (direct Azure AD)
